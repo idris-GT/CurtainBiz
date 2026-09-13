@@ -36,3 +36,5 @@ Thumbs.db
 # Local generated files
 *.sqlite3
 *.db
+
+business-operations-platform/backend/ml/data/test_historical_insert.py
