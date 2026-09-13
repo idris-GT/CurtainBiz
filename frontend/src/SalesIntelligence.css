@@ -1,0 +1,398 @@
+.si-page {
+  padding: 36px 42px 60px;
+  max-width: 1180px;
+  margin: 0 auto;
+  color: #506789;
+}
+
+.si-hero {
+  text-align: center;
+  padding: 20px 20px 34px;
+}
+
+.si-card-eyebrow {
+  display: block;
+  margin-bottom: 10px;
+  color: #7285a3;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.si-hero h1 {
+  margin: 0;
+  color: #8797ae;
+  font-size: 29px;
+  font-weight: 800;
+}
+
+.si-hero p {
+  max-width: 720px;
+  margin: 15px auto 0;
+  color: #5d7599;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.si-source {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 7px 11px;
+  border-radius: 7px;
+  background: #f1f4f8;
+  color: #71829d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.si-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 42px;
+}
+
+.si-metric-card {
+  min-height: 125px;
+  padding: 22px;
+  border: 1px solid #dce3ec;
+  border-radius: 13px;
+  background: #ffffff;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.si-metric-label {
+  display: block;
+  color: #6f809c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+.si-metric-value {
+  display: block;
+  margin-top: 14px;
+  color: #8d9cb1;
+  font-size: 25px;
+  font-weight: 800;
+}
+
+.si-metric-helper {
+  display: block;
+  margin-top: 7px;
+  color: #7890b2;
+  font-size: 11px;
+}
+
+.si-section {
+  margin-top: 42px;
+}
+
+.si-section-heading {
+  margin-bottom: 18px;
+}
+
+.si-section-heading h2 {
+  margin: 0;
+  color: #8b9ab0;
+  font-size: 23px;
+}
+
+.si-section-heading p {
+  margin: 8px 0 0;
+  color: #60799d;
+  font-size: 13px;
+}
+
+.si-forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.si-forecast-card {
+  padding: 24px;
+  border: 1px solid #dce3ec;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.si-forecast-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.si-forecast-header h3 {
+  margin: 0;
+  color: #6f83a0;
+  font-size: 18px;
+}
+
+.si-method-badge {
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: #f1f4f8;
+  color: #70839f;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.si-forecast-main {
+  margin-top: 25px;
+  color: #8999ae;
+  font-size: 31px;
+  font-weight: 800;
+}
+
+.si-forecast-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px solid #e7ebf0;
+}
+
+.si-forecast-meta span {
+  display: block;
+  margin-bottom: 5px;
+  color: #8291a8;
+  font-size: 10px;
+}
+
+.si-forecast-meta strong {
+  color: #7085a2;
+  font-size: 12px;
+}
+
+.si-reliability {
+  margin-top: 19px;
+  padding-top: 15px;
+  border-top: 1px solid #e7ebf0;
+  color: #7589a5;
+  font-size: 12px;
+}
+
+.si-reliability strong {
+  color: #607999;
+}
+
+.si-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #dce3ec;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.si-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.si-table th,
+.si-table td {
+  padding: 15px 18px;
+  border-bottom: 1px solid #e8edf2;
+  text-align: left;
+  font-size: 12px;
+}
+
+.si-table th {
+  background: #f8fafc;
+  color: #7386a1;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.si-table td {
+  color: #60799d;
+}
+
+.si-table td strong {
+  color: #7387a4;
+}
+
+.si-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.si-reliability-pill {
+  display: inline-block;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: #f1f4f8;
+  color: #71839d;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.si-empty {
+  padding: 35px;
+  border: 1px solid #dce3ec;
+  border-radius: 13px;
+  background: #ffffff;
+  color: #7c8da6;
+  text-align: center;
+  font-size: 13px;
+}
+
+.si-insight-card {
+  display: flex;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid #dce3ec;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.si-insight-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #eef3f8;
+  color: #6c83a3;
+  font-weight: 800;
+}
+
+.si-insight-card h2 {
+  margin: 0;
+  color: #8495ac;
+  font-size: 18px;
+}
+
+.si-insight-card p {
+  margin: 9px 0 0;
+  color: #60799d;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.si-insight-card small {
+  display: block;
+  margin-top: 12px;
+  color: #8795a9;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.si-loading {
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.si-loading h2 {
+  margin: 12px 0 5px;
+  color: #8292a8;
+}
+
+.si-loading p {
+  max-width: 520px;
+  color: #6c82a1;
+  font-size: 13px;
+}
+
+.si-loading-spinner {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 18px;
+  border: 3px solid #e2e8ef;
+  border-top-color: #8396af;
+  border-radius: 50%;
+  animation: si-spin 0.8s linear infinite;
+}
+
+@keyframes si-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.si-error {
+  max-width: 650px;
+  margin: 80px auto;
+  display: flex;
+  gap: 16px;
+  padding: 25px;
+  border: 1px solid #e2d7da;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.si-error-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f8e9eb;
+  color: #c04a5a;
+  font-weight: 800;
+}
+
+.si-error h2 {
+  margin: 0;
+  color: #8797aa;
+  font-size: 18px;
+}
+
+.si-error p {
+  color: #71839e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.si-retry-button {
+  padding: 9px 15px;
+  border: none;
+  border-radius: 7px;
+  background: #7589a4;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.si-retry-button:hover {
+  opacity: 0.9;
+}
+
+@media (max-width: 900px) {
+  .si-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .si-forecast-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .si-page {
+    padding: 25px 18px 45px;
+  }
+
+  .si-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .si-hero h1 {
+    font-size: 25px;
+  }
+
+  .si-hero p {
+    font-size: 14px;
+  }
+}
