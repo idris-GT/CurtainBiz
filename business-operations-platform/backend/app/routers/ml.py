@@ -68,29 +68,15 @@ def _load_business_data():
 # SALES INTELLIGENCE
 # ==========================================================
 
-@router.get(
-    "/sales-intelligence",
-)
-def get_sales_intelligence(
-    periods: int = Query(
-        default=8,
-        ge=1,
-        le=52,
-    ),
-    current_user=Depends(
-        require_permission("orders.view")
-    ),
+def _compute_sales_intelligence(
+    periods: int,
 ):
     """
-    Return Sales forecasting intelligence.
+    Perform the complete Sales Intelligence calculation.
 
-    Includes:
-        - Revenue forecast
-        - Order forecast
-        - Product demand forecast
-        - Model selection
-        - Validation metrics
-        - Reliability
+    This function is intentionally separate from the API
+    endpoint so the expensive ML work can run in the
+    background without blocking the HTTP request.
     """
 
     data, quality, validation = (
@@ -144,6 +130,124 @@ def get_sales_intelligence(
         "message": (
             "Sales intelligence generated from "
             "validated business data."
+        ),
+    }
+
+
+@router.get(
+    "/sales-intelligence",
+)
+def get_sales_intelligence(
+    periods: int = Query(
+        default=8,
+        ge=1,
+        le=52,
+    ),
+    current_user=Depends(
+        require_permission("orders.view")
+    ),
+):
+    """
+    Return Sales forecasting intelligence.
+
+    The expensive ML calculation runs in the background.
+    The first request returns immediately with status=processing.
+    Later requests return the cached completed intelligence.
+    """
+
+    cached = get_cached(
+        "sales_intelligence",
+        periods,
+    )
+
+    # ------------------------------------------------------
+    # CACHE EXISTS AND IS READY
+    # ------------------------------------------------------
+
+    if (
+        cached is not None
+        and cached.get("status") == "success"
+        and cached.get("data") is not None
+    ):
+        response = dict(
+            cached["data"]
+        )
+
+        response["cache"] = {
+            "status": "ready",
+            "refreshing": False,
+            "updated_at": cached.get(
+                "updated_at"
+            ),
+        }
+
+        return response
+
+    # ------------------------------------------------------
+    # CALCULATION ALREADY RUNNING
+    # ------------------------------------------------------
+
+    if (
+        cached is not None
+        and cached.get("refreshing") is True
+    ):
+        return {
+            "status": "processing",
+            "department": "sales",
+            "cache": {
+                "status": "processing",
+                "refreshing": True,
+                "started_at": cached.get(
+                    "started_at"
+                ),
+                "updated_at": cached.get(
+                    "updated_at"
+                ),
+            },
+            "data": cached.get(
+                "data"
+            ),
+            "message": (
+                "Sales Intelligence is being "
+                "calculated in the background."
+            ),
+        }
+
+    # ------------------------------------------------------
+    # NO CACHE
+    #
+    # Start the calculation in the background.
+    # ------------------------------------------------------
+
+    state = start_refresh(
+        name="sales_intelligence",
+        periods=periods,
+        compute_fn=lambda: (
+            _compute_sales_intelligence(
+                periods
+            )
+        ),
+    )
+
+    return {
+        "status": "processing",
+        "department": "sales",
+        "cache": {
+            "status": "processing",
+            "refreshing": True,
+            "started_at": state.get(
+                "started_at"
+            ),
+            "updated_at": state.get(
+                "updated_at"
+            ),
+        },
+        "data": state.get(
+            "data"
+        ),
+        "message": (
+            "Sales Intelligence calculation "
+            "started in the background."
         ),
     }
 

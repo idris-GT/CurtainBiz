@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import api from "./api/client";
 import "./SalesIntelligence.css";
 
@@ -32,9 +32,30 @@ function titleCase(value) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-/* =========================================================
-   FORECAST HELPERS
-========================================================= */
+/*
+  ---------------------------------------------------------
+  FORECAST DATA HELPERS
+  ---------------------------------------------------------
+
+  Backend forecast structure:
+
+  {
+    forecast_periods: 8,
+    historical_mean: ...,
+    historical_total: ...,
+    forecast: [
+      {
+        period: 1,
+        predicted_value: ...
+      }
+    ],
+    selected_method: ...,
+    model_name: ...,
+    reliability: {
+      level: "low"
+    }
+  }
+*/
 
 function getForecastPeriods(forecast) {
   return safeNumber(
@@ -54,8 +75,7 @@ function getForecastValues(forecast) {
         item?.predicted_value ??
           item?.prediction ??
           item?.value ??
-          item?.forecast ??
-          0
+          item?.forecast
       )
     );
   }
@@ -98,10 +118,6 @@ function getForecastAverage(forecast) {
     return safeNumber(forecast.average_forecast);
   }
 
-  if (forecast.average_weekly_demand !== undefined) {
-    return safeNumber(forecast.average_weekly_demand);
-  }
-
   const values = getForecastValues(forecast);
 
   if (values.length > 0) {
@@ -140,15 +156,6 @@ function getReliability(forecast) {
     forecast.reliability ||
     "unknown"
   );
-}
-
-function getReliabilityClass(value) {
-  const reliability = String(value || "").toLowerCase();
-
-  if (reliability === "high") return "high";
-  if (reliability === "moderate") return "moderate";
-
-  return "low";
 }
 
 /* =========================================================
@@ -251,11 +258,7 @@ function ForecastPeriodTable({
   const values = getForecastValues(forecast);
 
   if (values.length === 0) {
-    return (
-      <div className="si-empty">
-        No forecast period data available.
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -291,129 +294,6 @@ function ForecastPeriodTable({
 }
 
 /* =========================================================
-   PRODUCT DEMAND TABLE
-========================================================= */
-
-function ProductDemandTable({
-  productDemand,
-}) {
-  if (!productDemand) {
-    return (
-      <div className="si-empty">
-        Product demand intelligence is not available.
-      </div>
-    );
-  }
-
-  const products = Array.isArray(productDemand.products)
-    ? productDemand.products
-    : [];
-
-  if (products.length === 0) {
-    return (
-      <div className="si-empty">
-        No product-level demand forecasts are available.
-      </div>
-    );
-  }
-
-  return (
-    <div className="si-product-table-wrap">
-      <table className="si-product-table">
-        <thead>
-          <tr>
-            <th>PRODUCT</th>
-            <th>FORECAST DEMAND</th>
-            <th>AVG / WEEK</th>
-            <th>METHOD</th>
-            <th>RELIABILITY</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {products.map((product, index) => {
-            const forecastTotal = safeNumber(
-              product?.forecast_total ??
-                product?.total_forecast ??
-                product?.expected_total ??
-                0
-            );
-
-            const averageDemand = safeNumber(
-              product?.average_weekly_demand ??
-                product?.forecast_average ??
-                0
-            );
-
-            const method =
-              product?.selected_method ||
-              product?.method ||
-              product?.model_name ||
-              "—";
-
-            const reliability =
-              product?.reliability?.level ||
-              product?.reliability ||
-              "unknown";
-
-            const productName =
-              product?.product_name ||
-              product?.name ||
-              product?.product?.name ||
-              `Product #${product?.product_id ?? index + 1}`;
-
-            return (
-              <tr
-                key={
-                  product?.product_id ??
-                  `${productName}-${index}`
-                }
-              >
-                <td>
-                  <strong>{productName}</strong>
-
-                  {product?.product_id !== undefined && (
-                    <small>
-                      ID: {product.product_id}
-                    </small>
-                  )}
-                </td>
-
-                <td>
-                  <strong>
-                    {formatNumber(forecastTotal)}
-                  </strong>
-                </td>
-
-                <td>
-                  {formatNumber(averageDemand)}
-                </td>
-
-                <td>
-                  <span className="si-product-method">
-                    {titleCase(method)}
-                  </span>
-                </td>
-
-                <td>
-                  <span
-                    className={`si-reliability-badge ${getReliabilityClass(
-                      reliability
-                    )}`}
-                  >
-                    {titleCase(reliability)}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/* =========================================================
    MAIN PAGE
 ========================================================= */
 
@@ -421,49 +301,111 @@ export default function SalesIntelligence() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [processing, setProcessing] = useState(false);
+  const pollTimerRef = useRef(null);
+  const requestIdRef = useRef(0);
+
+  const POLL_INTERVAL_MS = 3000;
+  const MAX_POLL_ATTEMPTS = 200;
+
+  function stopPolling() {
+    if (pollTimerRef.current) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }
 
   async function loadSalesIntelligence() {
-    try {
-      setError("");
-      setLoading(true);
+    const requestId = ++requestIdRef.current;
+    stopPolling();
+    setError("");
+    setLoading(true);
+    setProcessing(false);
 
-      const response = await api.get(
-        "/ml/sales-intelligence",
-        {
-          params: {
-            periods: 8,
-          },
+    let attempts = 0;
+
+    const poll = async () => {
+      if (requestId !== requestIdRef.current) return;
+
+      attempts += 1;
+
+      try {
+        const response = await api.get(
+          "/ml/sales-intelligence",
+          { timeout: 30000 }
+        );
+
+        if (requestId !== requestIdRef.current) return;
+
+        console.log(
+          "Sales Intelligence response:",
+          response.data
+        );
+
+        if (response.data?.status === "processing") {
+          setProcessing(true);
+          setLoading(true);
+
+          if (attempts >= MAX_POLL_ATTEMPTS) {
+            setProcessing(false);
+            setLoading(false);
+            setError(
+              "Sales Intelligence is taking longer than expected. Please try again."
+            );
+            return;
+          }
+
+          pollTimerRef.current = window.setTimeout(
+            poll,
+            POLL_INTERVAL_MS
+          );
+          return;
         }
-      );
 
-      console.log(
-        "Sales Intelligence response:",
-        response.data
-      );
+        if (response.data?.status === "success" || response.data) {
+          setData(response.data);
+          setProcessing(false);
+          setLoading(false);
+          return;
+        }
 
-      setData(response.data);
-    } catch (err) {
-      console.error(
-        "Sales Intelligence error:",
-        err
-      );
+        throw new Error(
+          "Sales Intelligence returned an unexpected response."
+        );
+      } catch (err) {
+        if (requestId !== requestIdRef.current) return;
 
-      setError(
-        err?.response?.data?.detail ||
-          "Unable to load Sales Intelligence."
-      );
-    } finally {
-      setLoading(false);
-    }
+        console.error(
+          "Sales Intelligence error:",
+          err
+        );
+
+        setProcessing(false);
+        setLoading(false);
+        setError(
+          err?.response?.data?.detail ||
+            err?.message ||
+            "Unable to load Sales Intelligence."
+        );
+      }
+    };
+
+    await poll();
   }
 
   useEffect(() => {
     loadSalesIntelligence();
+
+    return () => {
+      requestIdRef.current += 1;
+      stopPolling();
+    };
   }, []);
 
-  /* =======================================================
-     BACKEND DATA
-  ======================================================= */
+  /*
+    The backend returns the sales intelligence
+    object with revenue and order forecasts.
+  */
 
   const revenueForecast =
     data?.revenue_forecast ||
@@ -472,11 +414,6 @@ export default function SalesIntelligence() {
 
   const orderForecast =
     data?.order_forecast ||
-    null;
-
-  const productDemandForecast =
-    data?.product_demand_forecast ||
-    data?.product_demand ||
     null;
 
   const revenueTotal =
@@ -495,12 +432,6 @@ export default function SalesIntelligence() {
     getForecastPeriods(revenueForecast) ||
     getForecastPeriods(orderForecast);
 
-  const productCount = safeNumber(
-    productDemandForecast?.product_count ??
-      productDemandForecast?.products?.length ??
-      0
-  );
-
   /* =======================================================
      LOADING
   ======================================================= */
@@ -516,12 +447,15 @@ export default function SalesIntelligence() {
           </span>
 
           <h2>
-            Loading Sales Intelligence...
+            {processing
+              ? "Generating Sales Intelligence..."
+              : "Loading Sales Intelligence..."}
           </h2>
 
           <p>
-            Loading validated sales forecasts
-            and product demand intelligence.
+            {processing
+              ? "The backend is calculating validated forecasts. This page will update automatically when the result is ready."
+              : "Loading validated sales forecasts and demand intelligence."}
           </p>
         </div>
       </div>
@@ -581,9 +515,8 @@ export default function SalesIntelligence() {
         </h1>
 
         <p>
-          Forecast revenue, order activity and
-          product-level demand using validated
-          historical business data.
+          Forecast revenue and order activity
+          using validated historical business data.
         </p>
 
         <span className="si-source">
@@ -726,6 +659,12 @@ export default function SalesIntelligence() {
 
       {/* =================================================
           PRODUCT DEMAND
+          
+          IMPORTANT:
+          The current sales-intelligence API does not
+          provide product-demand forecasts.
+
+          We deliberately do NOT invent product numbers.
       ================================================= */}
 
       <section className="si-section">
@@ -740,33 +679,17 @@ export default function SalesIntelligence() {
           </h2>
 
           <p>
-            Forecasted demand for individual
-            products based on historical order
-            activity.
+            Product-level forecasting will be connected
+            when the product-demand intelligence endpoint
+            is exposed by the backend.
           </p>
         </div>
 
-        <div className="si-product-summary">
-          <MetricCard
-            label="PRODUCTS ANALYZED"
-            value={formatNumber(productCount, 0)}
-            helper="Products with demand forecasts"
-          />
-
-          <MetricCard
-            label="FORECAST HORIZON"
-            value={
-              productDemandForecast?.forecast_periods
-                ? `${productDemandForecast.forecast_periods} weeks`
-                : "8 weeks"
-            }
-            helper="Product demand forecast"
-          />
+        <div className="si-empty">
+          Product-level forecast data is not currently
+          returned by the Sales Intelligence API.
+          No artificial values are displayed.
         </div>
-
-        <ProductDemandTable
-          productDemand={productDemandForecast}
-        />
 
       </section>
 
@@ -793,11 +716,11 @@ export default function SalesIntelligence() {
             </h2>
 
             <p>
-              Use the revenue, order and product
-              demand forecasts alongside customer
-              demand, product availability and
-              operational capacity when planning
-              upcoming sales activity.
+              Use the revenue and order forecasts
+              alongside current customer demand,
+              product availability and operational
+              capacity when planning upcoming sales
+              activity.
             </p>
 
             <small>
