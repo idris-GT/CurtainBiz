@@ -31,22 +31,33 @@ from app.routers.activity_logs import router as activity_logs_router
 from app.routers import auth_login
 from app.routers.ml import router as ml_router
 from app.routers.analytics import router as analytics_router
-from app.routers.powerbi import router as powerbi_router
 
 
-# --------------------------------------------------
-# APPLICATION
-# --------------------------------------------------
+# ---------------------------------------------------------
+# Environment
+# ---------------------------------------------------------
+
+APP_ENV = os.getenv("APP_ENV", "development").lower()
+
+IS_PRODUCTION = APP_ENV == "production"
+
+
+# ---------------------------------------------------------
+# FastAPI application
+# ---------------------------------------------------------
 
 app = FastAPI(
     title="Business Operations Platform API",
     version="1.0.0",
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
 )
 
 
-# --------------------------------------------------
-# CORS
-# --------------------------------------------------
+# ---------------------------------------------------------
+# CORS configuration
+# ---------------------------------------------------------
 
 default_origins = [
     "http://localhost:5173",
@@ -86,9 +97,9 @@ app.add_middleware(
 )
 
 
-# --------------------------------------------------
-# API ROUTERS
-# --------------------------------------------------
+# ---------------------------------------------------------
+# Routers
+# ---------------------------------------------------------
 
 app.include_router(customers_router)
 app.include_router(products_router)
@@ -115,12 +126,11 @@ app.include_router(activity_logs_router)
 app.include_router(auth_login.router)
 app.include_router(ml_router)
 app.include_router(analytics_router)
-app.include_router(powerbi_router)
 
 
-# --------------------------------------------------
-# BASIC ROUTES
-# --------------------------------------------------
+# ---------------------------------------------------------
+# Public health/root endpoints
+# ---------------------------------------------------------
 
 @app.get("/")
 def root():
@@ -136,17 +146,14 @@ def health_check():
     }
 
 
+# ---------------------------------------------------------
+# Protected system endpoints
+# ---------------------------------------------------------
+
 @app.get("/database-test")
 def database_test(
     current_user=Depends(get_current_user_role),
 ):
-    """
-    Authenticated database connectivity diagnostic.
-
-    Internal database errors are intentionally not returned
-    to the client.
-    """
-
     connection = None
 
     try:
