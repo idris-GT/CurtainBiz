@@ -20,21 +20,21 @@ import SalesIntelligence from "./SalesIntelligence";
 import SettingsPage from "./Settings";
 
 const menuItems = [
-  { name: "Dashboard", icon: "âŒ‚" },
-  { name: "Customers", icon: "â™™" },
-  { name: "Products", icon: "â–£" },
-  { name: "Employees", icon: "â™Ÿ" },
-  { name: "Inventory", icon: "â–¤" },
-  { name: "Stock Transactions", icon: "â‡„" },
-  { name: "Quotations", icon: "â–§" },
-  { name: "Orders", icon: "â—«" },
-  { name: "Production", icon: "âš™" },
-  { name: "Deliveries", icon: "âžœ" },
-  { name: "Payments", icon: "â‚¹" },
+  { name: "Dashboard", icon: "\u2302" },
+  { name: "Customers", icon: "◉" },
+  { name: "Products", icon: "\u25A3" },
+  { name: "Employees", icon: "\u25C7" },
+  { name: "Inventory", icon: "▤" },
+  { name: "Stock Transactions", icon: "\u21C4" },
+  { name: "Quotations", icon: "\u25C7" },
+  { name: "Orders", icon: "◫" },
+  { name: "Production", icon: "⚙" },
+  { name: "Deliveries", icon: "\u279C" },
+  { name: "Payments", icon: "₹" },
   { name: "Queries", icon: "?" },
-  { name: "Reports", icon: "â–¥" },
-  { name: "Business Intelligence", icon: "â—ˆ" },
-  { name: "Sales Intelligence", icon: "â—‰" },
+  { name: "Reports", icon: "\u25A5" },
+  { name: "Business Intelligence", icon: "\u25C8" },
+  { name: "Sales Intelligence", icon: "◉" },
 ];
 
 function getArray(response) {
@@ -105,14 +105,14 @@ function formatRoleName(role) {
 }
 
 function formatActivityAction(action) {
-  return String(action || "â€”")
+  return String(action || "—")
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatActivityDate(value) {
-  if (!value) return "â€”";
+  if (!value) return "—";
 
   const date = new Date(value);
 
@@ -126,6 +126,14 @@ function formatActivityDate(value) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
 }
 
 function App() {
@@ -147,6 +155,15 @@ function App() {
   const [displayName, setDisplayName] = useState(() => localStorage.getItem("curtainbiz_display_name") || "");
   const [profileSaved, setProfileSaved] = useState(false);
 
+  const [dashboardData, setDashboardData] = useState({
+    customers: 0,
+    orders: 0,
+    production: 0,
+    payments: 0,
+    recentOrders: [],
+    recentActivities: [],
+  });
+
 
   const resolvedDisplayName = displayName || currentUser.email?.split("@")[0]?.replace(/[._-]+/g, " ") || "User";
 
@@ -167,15 +184,6 @@ function App() {
     localStorage.removeItem("access_token");
     window.location.href = "/login";
   };
-
-  const [dashboardData, setDashboardData] = useState({
-    customers: 0,
-    orders: 0,
-    production: 0,
-    payments: 0,
-    recentOrders: [],
-    recentActivities: [],
-  });
 
   const permissionSet = new Set(permissions);
 
@@ -425,20 +433,12 @@ function App() {
     setActivePage(page);
   };
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(Number(value || 0));
-  };
-
   const getOrderId = (order) => {
     return (
       order.order_code ||
       order.order_number ||
       order.order_id ||
-      "â€”"
+      "—"
     );
   };
 
@@ -446,7 +446,7 @@ function App() {
     return (
       order.customer_name ||
       order.customer ||
-      `Customer #${order.customer_id || "â€”"}`
+      `Customer #${order.customer_id || "—"}`
     );
   };
 
@@ -484,7 +484,7 @@ function App() {
     ) {
       return (
         <section className="empty-page">
-          <div className="empty-icon">ðŸ”’</div>
+          <div className="empty-icon">🔒</div>
 
           <p className="empty-eyebrow">
             ACCESS RESTRICTED
@@ -601,7 +601,7 @@ function App() {
         <div className="empty-icon">
           {menuItems.find(
             (item) => item.name === activePage
-          )?.icon || "â–£"}
+          )?.icon || "\u25A3"}
         </div>
 
         <p className="empty-eyebrow">
@@ -623,7 +623,7 @@ function App() {
       <div className="app">
         <main className="main">
           <section className="empty-page">
-            <div className="empty-icon">â—Œ</div>
+            <div className="empty-icon">\u25CC</div>
 
             <p className="empty-eyebrow">
               SECURITY
@@ -645,7 +645,7 @@ function App() {
       <div className="app">
         <main className="main">
           <section className="empty-page">
-            <div className="empty-icon">ðŸ”’</div>
+            <div className="empty-icon">🔒</div>
 
             <p className="empty-eyebrow">
               ACCESS ERROR
@@ -726,7 +726,7 @@ function App() {
             }
           >
             <span className="nav-icon">
-              âš™
+              ⚙
             </span>
 
             <span>Settings</span>
@@ -738,16 +738,8 @@ function App() {
               <strong>{resolvedDisplayName}</strong>
               <span>{formatRoleName(currentUser.role)}</span>
             </div>
-<<<<<<< ours
-            <span className="user-menu">{profileOpen ? "⌃" : "⋮"}</span>
+<span className="user-menu">{profileOpen ? "\u2303" : "\u22EE"}</span>
           </button>
-=======
-
-            <span className="user-menu">
-              â‹®
-            </span>
-          </div>
->>>>>>> theirs
         </div>
       </aside>
 
@@ -775,12 +767,11 @@ function App() {
                 }
                 title="Search customers"
               >
-              âŒ•
+              \u2315
               </button>
             )}
 
-<<<<<<< ours
-            <div className="notification-wrap">
+<div className="notification-wrap">
               <button className="icon-button notification" title="Notifications" onClick={() => setNotificationsOpen((open) => !open)} aria-expanded={notificationsOpen}>
                 ♢
                 {notificationItems.length > 0 && <span></span>}
@@ -796,27 +787,7 @@ function App() {
                 </div>
               )}
             </div>
-=======
-            <button
-              className="icon-button notification"
-              title="Notifications"
-              onClick={() =>
-                setActivePage("Notifications")
-              }
-            >
-              â™¢
-              <span></span>
-            </button>
 
-            <div className="top-user">
-              <div className="avatar">
-                {getInitials(
-                  currentUser.email ||
-                    currentUser.role ||
-                    "User"
-                )}
-              </div>
->>>>>>> theirs
 
             <button className="top-user top-user-trigger" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen} aria-label="Open account menu">
               <div className="avatar">{getInitials(resolvedDisplayName)}</div>
@@ -866,22 +837,22 @@ function Dashboard({
     {
       title: "Total Customers",
       value: data.customers,
-      icon: "â™™",
+      icon: "◉",
     },
     {
       title: "Active Orders",
       value: data.orders,
-      icon: "â—«",
+      icon: "◫",
     },
     {
       title: "Production",
       value: data.production,
-      icon: "âš™",
+      icon: "⚙",
     },
     {
       title: "Pending Payments",
       value: formatCurrency(data.payments),
-      icon: "â‚¹",
+      icon: "₹",
     },
   ];
 
@@ -895,7 +866,7 @@ function Dashboard({
           </p>
 
           <h3>
-            Good day, {userEmail || "User"} ðŸ‘‹
+            Good day, {userEmail || "User"} 👋
           </h3>
 
           <p>
@@ -979,7 +950,7 @@ function Dashboard({
                 onNavigate("Orders")
               }
             >
-              View all â†’
+              View all →
             </button>
           </div>
 
@@ -1100,7 +1071,7 @@ function Dashboard({
                   onNavigate("Quotations")
                 }
               >
-              <span>ï¼‹</span>
+              <span>＋</span>
 
               <div>
                 <strong>
@@ -1120,7 +1091,7 @@ function Dashboard({
                   onNavigate("Customers")
                 }
               >
-              <span>â™™</span>
+              <span>◉</span>
 
               <div>
                 <strong>
@@ -1140,7 +1111,7 @@ function Dashboard({
                   onNavigate("Inventory")
                 }
               >
-              <span>â–¤</span>
+              <span>▤</span>
 
               <div>
                 <strong>
@@ -1160,7 +1131,7 @@ function Dashboard({
                   onNavigate("Production")
                 }
               >
-              <span>âš™</span>
+              <span>⚙</span>
 
               <div>
                 <strong>
@@ -1221,7 +1192,7 @@ function Dashboard({
               fontWeight: "700",
             }}
           >
-            ðŸ” Audit Log
+            🔐 Audit Log
           </span>
         </div>
 
@@ -1296,18 +1267,18 @@ function Dashboard({
                         <td>
                           <strong>
                             {activity.entity_type ||
-                              "â€”"}
+                              "—"}
                           </strong>
                         </td>
 
                         <td>
                           {activity.entity_id ??
-                            "â€”"}
+                            "—"}
                         </td>
 
                         <td>
                           {activity.description ||
-                            "â€”"}
+                            "—"}
                         </td>
 
                         <td>
@@ -1361,3 +1332,4 @@ function Dashboard({
 }
 
 export default App;
+
