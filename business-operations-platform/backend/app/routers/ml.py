@@ -256,28 +256,15 @@ def get_sales_intelligence(
 # INVENTORY INTELLIGENCE
 # ==========================================================
 
-@router.get(
-    "/inventory-intelligence",
-)
-def get_inventory_intelligence(
-    periods: int = Query(
-        default=8,
-        ge=1,
-        le=52,
-    ),
-    current_user=Depends(
-        require_permission("inventory.view")
-    ),
+def _compute_inventory_intelligence(
+    periods: int,
 ):
     """
-    Return Inventory and material-demand intelligence.
+    Perform the complete Inventory Intelligence calculation.
 
-    Includes:
-        - Material demand forecasts
-        - Current inventory risk
-        - Forecasted stock risk
-        - Untracked materials
-        - Purchase recommendations
+    This function is separated from the API endpoint so the
+    expensive calculation can run in the background and be
+    persisted by the shared intelligence cache.
     """
 
     data, quality, validation = (
@@ -328,26 +315,108 @@ def get_inventory_intelligence(
     }
 
 
-# ==========================================================
-# PRODUCTION INTELLIGENCE
-# ==========================================================
-
 @router.get(
-    "/production-intelligence",
+    "/inventory-intelligence",
 )
-def get_production_intelligence(
+def get_inventory_intelligence(
     periods: int = Query(
         default=8,
         ge=1,
         le=52,
     ),
     current_user=Depends(
-        require_permission("production.view")
+        require_permission("inventory.view")
     ),
 ):
     """
-    Return Production workload and capacity intelligence.
+    Return Inventory and material-demand intelligence.
+
+    The expensive calculation runs in the background.
+    Completed results are persisted in PostgreSQL and reused
+    across page changes and backend restarts.
     """
+
+    cached = get_cached(
+        "inventory_intelligence",
+        periods,
+    )
+
+    if (
+        cached is not None
+        and cached.get("status") == "success"
+        and cached.get("data") is not None
+    ):
+        response = dict(cached["data"])
+        response["cache"] = {
+            "status": "ready",
+            "refreshing": False,
+            "updated_at": cached.get(
+                "updated_at"
+            ),
+        }
+        return response
+
+    if (
+        cached is not None
+        and cached.get("refreshing") is True
+    ):
+        return {
+            "status": "processing",
+            "department": "inventory",
+            "cache": {
+                "status": "processing",
+                "refreshing": True,
+                "started_at": cached.get(
+                    "started_at"
+                ),
+                "updated_at": cached.get(
+                    "updated_at"
+                ),
+            },
+            "data": cached.get("data"),
+            "message": (
+                "Inventory Intelligence is being "
+                "calculated in the background."
+            ),
+        }
+
+    state = start_refresh(
+        name="inventory_intelligence",
+        periods=periods,
+        compute_fn=lambda: (
+            _compute_inventory_intelligence(
+                periods
+            )
+        ),
+    )
+
+    return {
+        "status": "processing",
+        "department": "inventory",
+        "cache": {
+            "status": "processing",
+            "refreshing": True,
+            "started_at": state.get(
+                "started_at"
+            ),
+            "updated_at": state.get(
+                "updated_at"
+            ),
+        },
+        "data": state.get("data"),
+        "message": (
+            "Inventory Intelligence calculation "
+            "started in the background."
+        ),
+    }
+
+
+# ==========================================================
+# PRODUCTION INTELLIGENCE
+# ==========================================================
+
+def _compute_production_intelligence(periods: int):
+    """Perform the complete Production Intelligence calculation."""
 
     data, quality, validation = (
         _load_business_data()
@@ -369,18 +438,83 @@ def get_production_intelligence(
     return {
         "status": "success",
         "department": "production",
-
         "forecast": forecast,
-
         "intelligence": intelligence,
-
         "data_quality": quality,
-
         "validation": validation,
-
         "message": (
             "Production intelligence generated from "
             "validated production history and workload forecast."
+        ),
+    }
+
+
+@router.get(
+    "/production-intelligence",
+)
+def get_production_intelligence(
+    periods: int = Query(
+        default=8,
+        ge=1,
+        le=52,
+    ),
+    current_user=Depends(
+        require_permission("production.view")
+    ),
+):
+    """Return Production workload and capacity intelligence."""
+
+    cached = get_cached(
+        "production_intelligence",
+        periods,
+    )
+
+    if (
+        cached is not None
+        and cached.get("status") == "success"
+        and cached.get("data") is not None
+    ):
+        return cached["data"]
+
+    if (
+        cached is not None
+        and cached.get("refreshing") is True
+    ):
+        return {
+            "status": "processing",
+            "department": "production",
+            "cache": {
+                "status": "processing",
+                "refreshing": True,
+                "started_at": cached.get("started_at"),
+                "updated_at": cached.get("updated_at"),
+            },
+            "data": cached.get("data"),
+            "message": (
+                "Production Intelligence is being "
+                "calculated in the background."
+            ),
+        }
+
+    state = start_refresh(
+        name="production_intelligence",
+        periods=periods,
+        compute_fn=lambda: _compute_production_intelligence(periods),
+    )
+
+    return {
+        "status": "processing",
+        "department": "production",
+        "cache": {
+            "status": "processing",
+            "refreshing": True,
+            "started_at": state.get("started_at"),
+            "updated_at": state.get("updated_at"),
+        },
+        "data": state.get("data"),
+        "message": (
+            "Production Intelligence calculation "
+            "started in the background."
         ),
     }
 
@@ -515,6 +649,11 @@ def _compute_admin_intelligence(
     """
     Perform the complete executive intelligence calculation.
 
+    The Sales Intelligence result is reused when an identical
+    completed cache entry already exists. This avoids repeating
+    the revenue, order, and product-demand calculations when Sales
+    Intelligence has already been generated for the same horizon.
+
     This function is intentionally separate from the API
     endpoint so it can run in the background.
     """
@@ -525,73 +664,223 @@ def _compute_admin_intelligence(
 
     # ------------------------------------------------------
     # SALES
+    #
+    # Reuse the already-computed Sales Intelligence snapshot
+    # whenever it is available for the same forecast horizon.
+    # This is the main duplicate-calculation optimization.
     # ------------------------------------------------------
 
-    revenue_forecast = generate_forecast(
-        data,
-        "revenue_forecast",
-        periods=periods,
+    sales_cached = get_cached(
+        "sales_intelligence",
+        periods,
     )
 
-    order_forecast = generate_forecast(
-        data,
-        "order_forecast",
-        periods=periods,
-    )
+    if (
+        sales_cached is not None
+        and sales_cached.get("status") == "success"
+        and sales_cached.get("data") is not None
+    ):
+        sales_data = sales_cached["data"]
 
-    product_demand_forecast = (
-        generate_product_demand_forecasts(
-            product_demand_df=data.get(
-                "product_demand"
-            ),
-            products_df=data.get(
-                "products"
-            ),
+        revenue_forecast = sales_data.get(
+            "revenue_forecast"
+        )
+        order_forecast = sales_data.get(
+            "order_forecast"
+        )
+        product_demand_forecast = sales_data.get(
+            "product_demand_forecast"
+        )
+
+        if (
+            revenue_forecast is not None
+            and order_forecast is not None
+            and product_demand_forecast is not None
+        ):
+            print(
+                "[ML ADMIN] Reusing cached Sales Intelligence: "
+                f"periods={periods}"
+            )
+        else:
+            # Defensive fallback for an incomplete/legacy cache entry.
+            revenue_forecast = generate_forecast(
+                data,
+                "revenue_forecast",
+                periods=periods,
+            )
+
+            order_forecast = generate_forecast(
+                data,
+                "order_forecast",
+                periods=periods,
+            )
+
+            product_demand_forecast = (
+                generate_product_demand_forecasts(
+                    product_demand_df=data.get(
+                        "product_demand"
+                    ),
+                    products_df=data.get(
+                        "products"
+                    ),
+                    periods=periods,
+                )
+            )
+    else:
+        # Sales Intelligence has not been generated yet, so Admin
+        # computes the required Sales components itself.
+        revenue_forecast = generate_forecast(
+            data,
+            "revenue_forecast",
             periods=periods,
         )
-    )
+
+        order_forecast = generate_forecast(
+            data,
+            "order_forecast",
+            periods=periods,
+        )
+
+        product_demand_forecast = (
+            generate_product_demand_forecasts(
+                product_demand_df=data.get(
+                    "product_demand"
+                ),
+                products_df=data.get(
+                    "products"
+                ),
+                periods=periods,
+            )
+        )
 
     # ------------------------------------------------------
     # INVENTORY
+    #
+    # Reuse the completed Inventory Intelligence snapshot
+    # whenever one exists for the same forecast horizon.
+    # This avoids repeating material-demand forecasting and
+    # inventory recommendation calculations.
     # ------------------------------------------------------
 
-    material_demand_forecast = (
-        generate_material_demand_forecasts(
-            data["material_demand"],
-            periods=periods,
-        )
+    inventory_cached = get_cached(
+        "inventory_intelligence",
+        periods,
     )
 
-    inventory_result = (
-        generate_inventory_recommendations(
-            inventory_df=data.get(
-                "inventory"
-            ),
-            material_demand_forecast=(
-                material_demand_forecast
-            ),
-            materials_df=data.get(
-                "materials"
-            ),
+    if (
+        inventory_cached is not None
+        and inventory_cached.get("status") == "success"
+        and inventory_cached.get("data") is not None
+    ):
+        inventory_data = inventory_cached["data"]
+
+        material_demand_forecast = inventory_data.get(
+            "material_demand_forecast"
         )
-    )
+        inventory_result = inventory_data.get(
+            "inventory_intelligence"
+        )
+
+        if (
+            material_demand_forecast is not None
+            and inventory_result is not None
+        ):
+            print(
+                "[ML ADMIN] Reusing cached Inventory Intelligence: "
+                f"periods={periods}"
+            )
+        else:
+            material_demand_forecast = (
+                generate_material_demand_forecasts(
+                    data["material_demand"],
+                    periods=periods,
+                )
+            )
+
+            inventory_result = (
+                generate_inventory_recommendations(
+                    inventory_df=data.get(
+                        "inventory"
+                    ),
+                    material_demand_forecast=(
+                        material_demand_forecast
+                    ),
+                    materials_df=data.get(
+                        "materials"
+                    ),
+                )
+            )
+    else:
+        material_demand_forecast = (
+            generate_material_demand_forecasts(
+                data["material_demand"],
+                periods=periods,
+            )
+        )
+
+        inventory_result = (
+            generate_inventory_recommendations(
+                inventory_df=data.get(
+                    "inventory"
+                ),
+                material_demand_forecast=(
+                    material_demand_forecast
+                ),
+                materials_df=data.get(
+                    "materials"
+                ),
+            )
+        )
 
     # ------------------------------------------------------
     # PRODUCTION
+    #
+    # Reuse the completed Production Intelligence snapshot
+    # whenever one exists for the same forecast horizon.
     # ------------------------------------------------------
 
-    production_forecast = generate_forecast(
-        data,
-        "production_workload_forecast",
-        periods=periods,
+    production_cached = get_cached(
+        "production_intelligence",
+        periods,
     )
 
-    production_result = (
-        analyze_production_intelligence(
+    if (
+        production_cached is not None
+        and production_cached.get("status") == "success"
+        and production_cached.get("data") is not None
+    ):
+        production_data = production_cached["data"]
+        production_forecast = production_data.get("forecast")
+        production_result = production_data.get("intelligence")
+
+        if (
+            production_forecast is not None
+            and production_result is not None
+        ):
+            print(
+                "[ML ADMIN] Reusing cached Production Intelligence: "
+                f"periods={periods}"
+            )
+        else:
+            production_forecast = generate_forecast(
+                data,
+                "production_workload_forecast",
+                periods=periods,
+            )
+            production_result = analyze_production_intelligence(
+                data=data,
+                forecast_result=production_forecast,
+            )
+    else:
+        production_forecast = generate_forecast(
+            data,
+            "production_workload_forecast",
+            periods=periods,
+        )
+        production_result = analyze_production_intelligence(
             data=data,
             forecast_result=production_forecast,
         )
-    )
 
     # ------------------------------------------------------
     # DELIVERY
