@@ -140,8 +140,33 @@ function App() {
     role_description: "",
   });
   const [permissions, setPermissions] = useState([]);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState("profile");
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem("curtainbiz_display_name") || "");
+  const [profileSaved, setProfileSaved] = useState(false);
 
   const permissionSet = new Set(permissions);
+
+  const resolvedDisplayName = displayName || currentUser.email?.split("@")[0]?.replace(/[._-]+/g, " ") || "User";
+
+  const notificationItems = [
+    dashboardData.payments > 0 ? { title: "Pending payments", message: `${formatCurrency(dashboardData.payments)} is currently pending.`, icon: "₹" } : null,
+    dashboardData.orders > 0 ? { title: "Active orders", message: `${dashboardData.orders} order${dashboardData.orders === 1 ? "" : "s"} require attention.`, icon: "◫" } : null,
+    dashboardData.production > 0 ? { title: "Production workload", message: `${dashboardData.production} production item${dashboardData.production === 1 ? "" : "s"} are active.`, icon: "⚙" } : null,
+  ].filter(Boolean);
+
+  const saveProfile = () => {
+    localStorage.setItem("curtainbiz_display_name", displayName.trim());
+    setDisplayName(displayName.trim());
+    setProfileSaved(true);
+    window.setTimeout(() => setProfileSaved(false), 2200);
+  };
+
+  const signOut = () => {
+    localStorage.removeItem("access_token");
+    window.location.href = "/login";
+  };
 
   const [dashboardData, setDashboardData] = useState({
     customers: 0,
@@ -480,6 +505,10 @@ function App() {
       );
     }
 
+    if (activePage === "Settings") {
+      return <SettingsPage currentUser={currentUser} displayName={displayName} resolvedDisplayName={resolvedDisplayName} setDisplayName={setDisplayName} profileSaved={profileSaved} onSaveProfile={saveProfile} section={settingsSection} setSection={setSettingsSection} onSignOut={signOut} />;
+    }
+
     if (activePage === "Dashboard") {
       return (
         <Dashboard
@@ -701,28 +730,14 @@ function App() {
             <span>Settings</span>
           </button>
 
-          <div className="user-card">
-            <div className="avatar">
-              {getInitials(
-                currentUser.email ||
-                  currentUser.role ||
-                  "User"
-              )}
-            </div>
-
+          <button className="user-card" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen} aria-label="Open account menu">
+            <div className="avatar">{getInitials(resolvedDisplayName)}</div>
             <div className="user-info">
-              <strong>
-                {currentUser.email || "User"}
-              </strong>
-              <span>
-                {formatRoleName(currentUser.role)}
-              </span>
+              <strong>{resolvedDisplayName}</strong>
+              <span>{formatRoleName(currentUser.role)}</span>
             </div>
-
-            <span className="user-menu">
-              ⋮
-            </span>
-          </div>
+            <span className="user-menu">{profileOpen ? "⌃" : "⋮"}</span>
+          </button>
         </div>
       </aside>
 
@@ -754,35 +769,39 @@ function App() {
               </button>
             )}
 
-            <button
-              className="icon-button notification"
-              title="Notifications"
-              onClick={() =>
-                setActivePage("Notifications")
-              }
-            >
-              ♢
-              <span></span>
-            </button>
-
-            <div className="top-user">
-              <div className="avatar">
-                {getInitials(
-                  currentUser.email ||
-                    currentUser.role ||
-                    "User"
-                )}
-              </div>
-
-              <div>
-                <strong>
-                  {currentUser.email || "User"}
-                </strong>
-                <small>
-                  {formatRoleName(currentUser.role)}
-                </small>
-              </div>
+            <div className="notification-wrap">
+              <button className="icon-button notification" title="Notifications" onClick={() => setNotificationsOpen((open) => !open)} aria-expanded={notificationsOpen}>
+                ♢
+                {notificationItems.length > 0 && <span></span>}
+              </button>
+              {notificationsOpen && (
+                <div className="notification-panel">
+                  <div className="notification-panel-header"><div><strong>Notifications</strong><small>Live operational signals</small></div><button onClick={() => setNotificationsOpen(false)}>×</button></div>
+                  {notificationItems.length === 0 ? (
+                    <div className="notification-empty"><div>✓</div><strong>You're all caught up</strong><span>No active operational alerts right now.</span></div>
+                  ) : (
+                    <div className="notification-list">{notificationItems.map((item) => <div className="notification-item" key={item.title}><div className="notification-icon">{item.icon}</div><div><strong>{item.title}</strong><span>{item.message}</span></div></div>)}</div>
+                  )}
+                </div>
+              )}
             </div>
+
+            <button className="top-user top-user-trigger" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen} aria-label="Open account menu">
+              <div className="avatar">{getInitials(resolvedDisplayName)}</div>
+              <div><strong>{resolvedDisplayName}</strong><small>{formatRoleName(currentUser.role)}</small></div>
+              <span className="top-user-chevron">⌄</span>
+            </button>
+            {profileOpen && (
+              <div className="profile-menu">
+                <div className="profile-menu-header"><div className="avatar avatar-large">{getInitials(resolvedDisplayName)}</div><div><strong>{resolvedDisplayName}</strong><span>{currentUser.email || "No email"}</span><small>{formatRoleName(currentUser.role)}</small></div></div>
+                <div className="profile-menu-divider" />
+                <button onClick={() => { setSettingsSection("profile"); setActivePage("Settings"); setProfileOpen(false); }}><span>◉</span> My Profile</button>
+                <button onClick={() => { setSettingsSection("preferences"); setActivePage("Settings"); setProfileOpen(false); }}><span>⚙</span> Account Settings</button>
+                <button onClick={() => { setSettingsSection("security"); setActivePage("Settings"); setProfileOpen(false); }}><span>⌁</span> Security</button>
+                <div className="profile-menu-divider" />
+                <button className="profile-signout" onClick={signOut}><span>↪</span> Sign out</button>
+              </div>
+            )}
           </div>
         </header>
 
