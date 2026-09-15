@@ -1,0 +1,190 @@
+name: Fix Settings Page
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-settings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add Settings page and verify build
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/src/App.jsx')
+          text = path.read_text(encoding='utf-8')
+          if 'function SettingsPage(' not in text:
+              marker = '\nexport default App;'
+              component = r'''
+
+function SettingsPage({
+  currentUser,
+  displayName,
+  resolvedDisplayName,
+  setDisplayName,
+  profileSaved,
+  onSaveProfile,
+  section,
+  setSection,
+  onSignOut,
+}) {
+  const sections = [
+    { id: 'profile', label: 'My Profile', icon: '◉' },
+    { id: 'preferences', label: 'Preferences', icon: '⚙' },
+    { id: 'security', label: 'Security', icon: '⌁' },
+    { id: 'about', label: 'About CurtainBiz', icon: 'ⓘ' },
+  ];
+
+  return (
+    <section className="content settings-page">
+      <div className="settings-hero">
+        <div>
+          <p className="eyebrow">WORKSPACE</p>
+          <h3>Settings</h3>
+          <p>Manage your account and application preferences.</p>
+        </div>
+      </div>
+
+      <div className="settings-layout">
+        <aside className="settings-nav panel">
+          <div className="settings-nav-title">ACCOUNT</div>
+          {sections.map((item) => (
+            <button
+              key={item.id}
+              className={`settings-nav-item ${section === item.id ? 'active' : ''}`}
+              onClick={() => setSection(item.id)}
+            >
+              <span>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </aside>
+
+        <div className="settings-card panel">
+          {section === 'profile' && (
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <div>
+                  <h3>My Profile</h3>
+                  <p>Your account information used by CurtainBiz.</p>
+                </div>
+                <div className="settings-profile-avatar">{getInitials(resolvedDisplayName)}</div>
+              </div>
+
+              <div className="settings-fields">
+                <label>
+                  Display name
+                  <input
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    placeholder="Enter your name"
+                  />
+                </label>
+                <label>
+                  Email address
+                  <input value={currentUser.email || ''} readOnly />
+                </label>
+                <label>
+                  Role
+                  <input value={formatRoleName(currentUser.role)} readOnly />
+                </label>
+                <label>
+                  Account status
+                  <input value="Active" readOnly />
+                </label>
+              </div>
+
+              <div className="settings-actions">
+                <button className="primary-button" onClick={onSaveProfile}>Save changes</button>
+                {profileSaved && <span className="settings-saved">Saved successfully.</span>}
+              </div>
+            </div>
+          )}
+
+          {section === 'preferences' && (
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <div>
+                  <h3>Preferences</h3>
+                  <p>Application preferences for this browser.</p>
+                </div>
+              </div>
+              <div className="preference-list">
+                <div className="preference-row">
+                  <div><strong>Appearance</strong><span>CurtainBiz currently uses the professional light workspace theme.</span></div>
+                  <span className="preference-value">Light</span>
+                </div>
+                <div className="preference-row">
+                  <div><strong>Notifications</strong><span>Operational notifications are generated from live dashboard data.</span></div>
+                  <span className="preference-value">Enabled</span>
+                </div>
+                <div className="preference-row">
+                  <div><strong>Dashboard</strong><span>Dashboard cards and operational activity use live API data.</span></div>
+                  <span className="preference-value">Live data</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {section === 'security' && (
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <div>
+                  <h3>Security</h3>
+                  <p>Review your current session and sign out when finished.</p>
+                </div>
+              </div>
+              <div className="security-status">
+                <div className="security-status-icon">✓</div>
+                <div><strong>Authenticated session</strong><span>Your access is protected by the CurtainBiz authentication and RBAC system.</span></div>
+              </div>
+              <button className="danger-button" onClick={onSignOut}>Sign out</button>
+            </div>
+          )}
+
+          {section === 'about' && (
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <div>
+                  <h3>About CurtainBiz</h3>
+                  <p>Business Operations Platform</p>
+                </div>
+                <div className="about-logo">CB</div>
+              </div>
+              <div className="about-grid">
+                <div><span>Product</span><strong>CurtainBiz</strong></div>
+                <div><span>Version</span><strong>1.0.0</strong></div>
+                <div><span>Platform</span><strong>Business Operations</strong></div>
+                <div><span>Access control</span><strong>Role-based permissions</strong></div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+'''
+              if marker not in text:
+                  raise SystemExit('App.jsx export marker not found')
+              text = text.replace(marker, component + marker)
+              path.write_text(text, encoding='utf-8')
+          PY
+          cd frontend
+          npm install
+          npm run build
+
+      - name: Commit fix and remove workflow
+        run: |
+          rm -f .github/workflows/fix-settings.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/App.jsx .github/workflows/fix-settings.yml
+          git diff --cached --quiet || git commit -m 'Fix functional Settings page'
+          git push
