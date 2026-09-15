@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import "./App.css";
 import api from "./api/client";
 
@@ -17,23 +17,24 @@ import Queries from "./Queries";
 import Reports from "./Reports";
 import AdminIntelligence from "./AdminIntelligence";
 import SalesIntelligence from "./SalesIntelligence";
+import SettingsPage from "./Settings";
 
 const menuItems = [
-  { name: "Dashboard", icon: "⌂" },
-  { name: "Customers", icon: "♙" },
-  { name: "Products", icon: "▣" },
-  { name: "Employees", icon: "♟" },
-  { name: "Inventory", icon: "▤" },
-  { name: "Stock Transactions", icon: "⇄" },
-  { name: "Quotations", icon: "▧" },
-  { name: "Orders", icon: "◫" },
-  { name: "Production", icon: "⚙" },
-  { name: "Deliveries", icon: "➜" },
-  { name: "Payments", icon: "₹" },
+  { name: "Dashboard", icon: "âŒ‚" },
+  { name: "Customers", icon: "â™™" },
+  { name: "Products", icon: "â–£" },
+  { name: "Employees", icon: "â™Ÿ" },
+  { name: "Inventory", icon: "â–¤" },
+  { name: "Stock Transactions", icon: "â‡„" },
+  { name: "Quotations", icon: "â–§" },
+  { name: "Orders", icon: "â—«" },
+  { name: "Production", icon: "âš™" },
+  { name: "Deliveries", icon: "âžœ" },
+  { name: "Payments", icon: "â‚¹" },
   { name: "Queries", icon: "?" },
-  { name: "Reports", icon: "▥" },
-  { name: "Business Intelligence", icon: "◈" },
-  { name: "Sales Intelligence", icon: "◉" },
+  { name: "Reports", icon: "â–¥" },
+  { name: "Business Intelligence", icon: "â—ˆ" },
+  { name: "Sales Intelligence", icon: "â—‰" },
 ];
 
 function getArray(response) {
@@ -104,14 +105,14 @@ function formatRoleName(role) {
 }
 
 function formatActivityAction(action) {
-  return String(action || "—")
+  return String(action || "â€”")
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatActivityDate(value) {
-  if (!value) return "—";
+  if (!value) return "â€”";
 
   const date = new Date(value);
 
@@ -146,7 +147,6 @@ function App() {
   const [displayName, setDisplayName] = useState(() => localStorage.getItem("curtainbiz_display_name") || "");
   const [profileSaved, setProfileSaved] = useState(false);
 
-  const permissionSet = new Set(permissions);
 
   const resolvedDisplayName = displayName || currentUser.email?.split("@")[0]?.replace(/[._-]+/g, " ") || "User";
 
@@ -176,6 +176,8 @@ function App() {
     recentOrders: [],
     recentActivities: [],
   });
+
+  const permissionSet = new Set(permissions);
 
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
@@ -436,7 +438,7 @@ function App() {
       order.order_code ||
       order.order_number ||
       order.order_id ||
-      "—"
+      "â€”"
     );
   };
 
@@ -444,7 +446,7 @@ function App() {
     return (
       order.customer_name ||
       order.customer ||
-      `Customer #${order.customer_id || "—"}`
+      `Customer #${order.customer_id || "â€”"}`
     );
   };
 
@@ -482,7 +484,7 @@ function App() {
     ) {
       return (
         <section className="empty-page">
-          <div className="empty-icon">🔒</div>
+          <div className="empty-icon">ðŸ”’</div>
 
           <p className="empty-eyebrow">
             ACCESS RESTRICTED
@@ -599,7 +601,7 @@ function App() {
         <div className="empty-icon">
           {menuItems.find(
             (item) => item.name === activePage
-          )?.icon || "▣"}
+          )?.icon || "â–£"}
         </div>
 
         <p className="empty-eyebrow">
@@ -621,7 +623,7 @@ function App() {
       <div className="app">
         <main className="main">
           <section className="empty-page">
-            <div className="empty-icon">◌</div>
+            <div className="empty-icon">â—Œ</div>
 
             <p className="empty-eyebrow">
               SECURITY
@@ -643,7 +645,7 @@ function App() {
       <div className="app">
         <main className="main">
           <section className="empty-page">
-            <div className="empty-icon">🔒</div>
+            <div className="empty-icon">ðŸ”’</div>
 
             <p className="empty-eyebrow">
               ACCESS ERROR
@@ -724,7 +726,7 @@ function App() {
             }
           >
             <span className="nav-icon">
-              ⚙
+              âš™
             </span>
 
             <span>Settings</span>
@@ -736,8 +738,16 @@ function App() {
               <strong>{resolvedDisplayName}</strong>
               <span>{formatRoleName(currentUser.role)}</span>
             </div>
+<<<<<<< ours
             <span className="user-menu">{profileOpen ? "⌃" : "⋮"}</span>
           </button>
+=======
+
+            <span className="user-menu">
+              â‹®
+            </span>
+          </div>
+>>>>>>> theirs
         </div>
       </aside>
 
@@ -765,10 +775,11 @@ function App() {
                 }
                 title="Search customers"
               >
-              ⌕
+              âŒ•
               </button>
             )}
 
+<<<<<<< ours
             <div className="notification-wrap">
               <button className="icon-button notification" title="Notifications" onClick={() => setNotificationsOpen((open) => !open)} aria-expanded={notificationsOpen}>
                 ♢
@@ -785,6 +796,27 @@ function App() {
                 </div>
               )}
             </div>
+=======
+            <button
+              className="icon-button notification"
+              title="Notifications"
+              onClick={() =>
+                setActivePage("Notifications")
+              }
+            >
+              â™¢
+              <span></span>
+            </button>
+
+            <div className="top-user">
+              <div className="avatar">
+                {getInitials(
+                  currentUser.email ||
+                    currentUser.role ||
+                    "User"
+                )}
+              </div>
+>>>>>>> theirs
 
             <button className="top-user top-user-trigger" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen} aria-label="Open account menu">
               <div className="avatar">{getInitials(resolvedDisplayName)}</div>
@@ -834,22 +866,22 @@ function Dashboard({
     {
       title: "Total Customers",
       value: data.customers,
-      icon: "♙",
+      icon: "â™™",
     },
     {
       title: "Active Orders",
       value: data.orders,
-      icon: "◫",
+      icon: "â—«",
     },
     {
       title: "Production",
       value: data.production,
-      icon: "⚙",
+      icon: "âš™",
     },
     {
       title: "Pending Payments",
       value: formatCurrency(data.payments),
-      icon: "₹",
+      icon: "â‚¹",
     },
   ];
 
@@ -863,7 +895,7 @@ function Dashboard({
           </p>
 
           <h3>
-            Good day, {userEmail || "User"} 👋
+            Good day, {userEmail || "User"} ðŸ‘‹
           </h3>
 
           <p>
@@ -947,7 +979,7 @@ function Dashboard({
                 onNavigate("Orders")
               }
             >
-              View all →
+              View all â†’
             </button>
           </div>
 
@@ -1068,7 +1100,7 @@ function Dashboard({
                   onNavigate("Quotations")
                 }
               >
-              <span>＋</span>
+              <span>ï¼‹</span>
 
               <div>
                 <strong>
@@ -1088,7 +1120,7 @@ function Dashboard({
                   onNavigate("Customers")
                 }
               >
-              <span>♙</span>
+              <span>â™™</span>
 
               <div>
                 <strong>
@@ -1108,7 +1140,7 @@ function Dashboard({
                   onNavigate("Inventory")
                 }
               >
-              <span>▤</span>
+              <span>â–¤</span>
 
               <div>
                 <strong>
@@ -1128,7 +1160,7 @@ function Dashboard({
                   onNavigate("Production")
                 }
               >
-              <span>⚙</span>
+              <span>âš™</span>
 
               <div>
                 <strong>
@@ -1189,7 +1221,7 @@ function Dashboard({
               fontWeight: "700",
             }}
           >
-            🔐 Audit Log
+            ðŸ” Audit Log
           </span>
         </div>
 
@@ -1264,18 +1296,18 @@ function Dashboard({
                         <td>
                           <strong>
                             {activity.entity_type ||
-                              "—"}
+                              "â€”"}
                           </strong>
                         </td>
 
                         <td>
                           {activity.entity_id ??
-                            "—"}
+                            "â€”"}
                         </td>
 
                         <td>
                           {activity.description ||
-                            "—"}
+                            "â€”"}
                         </td>
 
                         <td>
